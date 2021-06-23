@@ -22,8 +22,7 @@ base.to_csv('C:/Users/rcesa/Google Drive/Mestrado_FEA/RA/Haddad/bases/extract_fi
 
 
 # extraindo caracteristicas medias das moedas
-
-
+browser=webdriver.Chrome()
 base = pd.read_csv('C:/Users/rcesa/Google Drive/Mestrado_FEA/RA/Haddad/bases/base_caracteristicas_moedas.csv')
 base['mean_axis'] = np.nan
 base['mean_diameter'] = np.nan
@@ -45,3 +44,5 @@ for row in base.index:
         base.at[row,'mean_weigth']  = soup.find(text="Average measurements for this coin type:").parent.parent.find(text='Weight').next.next.text
     except:
         pass
+
+base.to_csv('C:/Users/rcesa/Google Drive/Mestrado_FEA/RA/Haddad/bases/base_caracteristicas_moedas2.csv',index=False)

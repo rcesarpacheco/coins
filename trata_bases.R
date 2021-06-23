@@ -124,8 +124,6 @@ fwrite(base,file ='bases/base_caracteristicas_moedas.csv' )
 mints_nas <- unique(base[is.na(name),.(mint,link_mint)])
 
 # cruza base moedas findspots com localizacoes dos findspots --------------
-
-
 base <- fread('bases/base_coins_findspots.csv')
 base_findspots <- fread('bases/findspot.csv',select = c('RecordId','long','lat'))
 setnames(base_findspots,c('RecordId','long','lat'),c('record_id','findspot_long','findspot_lat'))
