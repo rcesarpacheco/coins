@@ -1,5 +1,5 @@
 library(pacman)
-p_load(geojsonR,data.table,rvest,xml2,stringr,dplyr,tidyr,janitor,rebus)
+p_load(geojsonR,data.table,rvest,xml2,stringr,dplyr,tidyr,janitor,rebus,XML)
 setwd('c:/Users/rcesa/Google Drive/Mestrado_FEA/ra/Haddad/')
 
 arquivo <- FROM_GeoJson(url_file_string = "bases/mints.geojson")
@@ -67,4 +67,37 @@ base <- melt(base,variable.name = "coins_numbers",value.name = "coins",id.vars =
 base[,coins_numbers:=NULL]
 base <- base[!is.na(coins),]
 base[,ref_coin:=extrai_substr_pattern(coins,"id/"),by = seq_len(nrow(base))]
-fwrite(base,file="bases/base_coins.csv")
+fwrite(base,file="bases/base_coins_findspots.csv")
+
+# construcao base de moedas -----------------------------------------------
+base <- fread('bases/base_coins_findspots.csv',select = c('coins','ref_coin'))
+base <- unique(base)
+base[,c('date','date_range_start','date_range_end','manufacture','denomination','material','authority','mint','obverse_type','obverse_deity','reverse_type','reverse_deity'):=""]
+
+num_moedas <- nrow(base)
+for (i in 1:num_moedas) {
+  print(i)
+  caminho <- base[i,coins]
+  xml <- xmlParse(paste0(caminho,'.xml'))
+  xml_data <- xmlToList(xml)
+  base[i,date:=ifelse(is.null(xml_data$descMeta$typeDesc$date$text),"",xml_data$descMeta$typeDesc$date$text)]
+  base[i,date_range_start:=ifelse(is.null(xml_data$descMeta$typeDesc$dateRange$fromDate$text),"",xml_data$descMeta$typeDesc$dateRange$fromDate$text)]
+  base[i,date_range_end:=ifelse(is.null(xml_data$descMeta$typeDesc$dateRange$toDate$text),"",xml_data$descMeta$typeDesc$dateRange$toDate$text)]
+  base[i,manufacture:=ifelse(is.null(xml_data$descMeta$typeDesc$manufacture$text),"",xml_data$descMeta$typeDesc$manufacture$text)]
+  base[i,denomination:=ifelse(is.null(xml_data$descMeta$typeDesc$denomination$text),"",xml_data$descMeta$typeDesc$denomination$text)]
+  base[i,material:=ifelse(is.null(xml_data$descMeta$typeDesc$material$text),"",xml_data$descMeta$typeDesc$material$text)]
+  base[i,authority:=ifelse(is.null(xml_data$descMeta$typeDesc$authority$persname$text),"",xml_data$descMeta$typeDesc$authority$persname$text)]
+  base[i,mint:=ifelse(is.null(xml_data$descMeta$typeDesc$geographic$geogname$text),"",xml_data$descMeta$typeDesc$geographic$geogname$text)]
+  base[i,obverse_type:=ifelse(is.null(xml_data$descMeta$typeDesc$obverse$type$description$text),"",xml_data$descMeta$typeDesc$obverse$type$description$text)]
+  base[i,obverse_deity:=ifelse(is.null(xml_data$descMeta$typeDesc$obverse$persname$text),"",xml_data$descMeta$typeDesc$obverse$persname$text)]
+  base[i,reverse_type:=ifelse(is.null(xml_data$descMeta$typeDesc$reverse$type$description$text),"",xml_data$descMeta$typeDesc$reverse$type$description$text)]
+  base[i,reverse_deity:=ifelse(is.null(xml_data$descMeta$typeDesc$reverse$persname$text),"",xml_data$descMeta$typeDesc$reverse$persname$text)]
+}
+
+base[date!="",c('date_range_start','date_range_end'):=date]
+
+base[,date:=NULL]
+
+
+fwrite(base,'bases/base_caracteristicas_moedas.csv')
+
