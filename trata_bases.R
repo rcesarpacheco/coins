@@ -22,7 +22,8 @@ extrai_codigo_uri <- function(string) {
 
 lista_dfs <- lapply(arquivo, extrai_data_frame)
 df <- do.call("rbind",lista_dfs)
-
+rownames(df) <- NULL
+fwrite(df,file = "bases/mints.csv")
 
 arquivo <- FROM_GeoJson(url_file_string = "bases/findspots.geojson")
 arquivo <- unlist(arquivo,recursive = FALSE)
@@ -72,7 +73,7 @@ fwrite(base,file="bases/base_coins_findspots.csv")
 # construcao base de moedas -----------------------------------------------
 base <- fread('bases/base_coins_findspots.csv',select = c('coins','ref_coin'))
 base <- unique(base)
-base[,c('date','date_range_start','date_range_end','manufacture','denomination','material','authority','mint','obverse_type','obverse_deity','reverse_type','reverse_deity'):=""]
+base[,c('date','date_range_start','date_range_end','manufacture','denomination','material','authority','mint','link_mint','obverse_type','obverse_deity','reverse_type','reverse_deity'):=""]
 
 num_moedas <- nrow(base)
 for (i in 1:num_moedas) {
@@ -88,6 +89,7 @@ for (i in 1:num_moedas) {
   base[i,material:=ifelse(is.null(xml_data$descMeta$typeDesc$material$text),"",xml_data$descMeta$typeDesc$material$text)]
   base[i,authority:=ifelse(is.null(xml_data$descMeta$typeDesc$authority$persname$text),"",xml_data$descMeta$typeDesc$authority$persname$text)]
   base[i,mint:=ifelse(is.null(xml_data$descMeta$typeDesc$geographic$geogname$text),"",xml_data$descMeta$typeDesc$geographic$geogname$text)]
+  base[i,link_mint:=ifelse(is.null(xml_data$descMeta$typeDesc$geographic$geogname$.attrs["href"][1]),"",xml_data$descMeta$typeDesc$geographic$geogname$.attrs["href"][1])]
   base[i,obverse_type:=ifelse(is.null(xml_data$descMeta$typeDesc$obverse$type$description$text),"",xml_data$descMeta$typeDesc$obverse$type$description$text)]
   base[i,obverse_deity:=ifelse(is.null(xml_data$descMeta$typeDesc$obverse$persname$text),"",xml_data$descMeta$typeDesc$obverse$persname$text)]
   base[i,reverse_type:=ifelse(is.null(xml_data$descMeta$typeDesc$reverse$type$description$text),"",xml_data$descMeta$typeDesc$reverse$type$description$text)]
@@ -100,4 +102,33 @@ base[,date:=NULL]
 
 
 fwrite(base,'bases/base_caracteristicas_moedas.csv')
+
+base_mints_necessarios <- unique(base[,.(mint,link_mint)])
+fwrite(base_mints_necessarios,'bases/base_mints_necessarios.csv')
+
+
+# cruza com localizacoes mints --------------------------------------------
+
+base <- fread('bases/base_caracteristicas_moedas.csv')
+base[,id_mint:=extrai_substr_pattern(link_mint,"id/"),by = seq_len(nrow(base))]
+
+base_mints <- fread('bases/mints.csv')
+
+base_mints[,id_mint:=extrai_substr_pattern(uri,"id/"),by = seq_len(nrow(base_mints))]
+base_mints[,type:=NULL]
+setnames(base_mints,c('lat','long'),c('mint_lat','mint_long'))
+
+base <- merge(base,base_mints,by='id_mint',all.x = T)
+fwrite(base,file ='bases/base_caracteristicas_moedas.csv' )
+
+mints_nas <- unique(base[is.na(name),.(mint,link_mint)])
+
+# cruza base moedas findspots com localizacoes dos findspots --------------
+
+
+base <- fread('bases/base_coins_findspots.csv')
+base_findspots <- fread('bases/findspot.csv',select = c('RecordId','long','lat'))
+setnames(base_findspots,c('RecordId','long','lat'),c('record_id','findspot_long','findspot_lat'))
+base <- merge(base,base_findspots,by='record_id',all.x=T)
+fwrite(base,file ='bases/base_coins_findspots.csv' )
 
